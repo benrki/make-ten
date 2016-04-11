@@ -1,5 +1,6 @@
 import React, {
   AppRegistry,
+  Animated,
   Component,
   StyleSheet,
   Text,
@@ -36,10 +37,27 @@ class makeTen extends Component {
     super(props);
     this.numLength = 3;
     this.state = {
-      number: 'Ten',
+      title: {
+         fade: new Animated.Value(0)
+      },
+      number: {
+        value: 'Ten',
+        fade: new Animated.Value(0)
+      },
       numbers: this.generateNumbers(),
       operators: ['*', '*', '*']
     };
+  }
+
+  componentDidMount() {
+    Animated.timing(this.state.title.fade, {
+      toValue: 1,
+      duration: 2000
+    }).start();
+    Animated.timing(this.state.number.fade, {
+      toValue: 1,
+      duration: 4000
+    }).start();
   }
 
   setOperator(i, op) {
@@ -69,14 +87,13 @@ class makeTen extends Component {
             selectedValue={operators[i]}
             onValueChange={curry(setOperator, i)}
           >
-            {OPERATORS.map((op) => (
+            {OPERATORS.map((op) =>
               <Picker.Item
                 style={styles.input}
                 key={`input-${i}-${op}`}
                 label={op}
                 value={op}
               />
-              )
             )}
           </Picker>
         );
@@ -89,9 +106,16 @@ class makeTen extends Component {
   render() {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>
-          Make {this.state.number}
-        </Text>
+        <Animated.Text
+          style={[{ opacity: this.state.title.fade }, styles.title]}
+        >
+          Make
+        </Animated.Text>
+        <Animated.Text
+          style={[{ opacity: this.state.number.fade }, styles.title]}
+        >
+          {this.state.number.value}
+        </Animated.Text>
         <View style={styles.game}>
           {this.renderInputs(this.state)}
         </View>
@@ -111,7 +135,8 @@ const styles = StyleSheet.create({
     fontSize: 30,
     textAlign: 'center',
     margin: 10,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    alignSelf: 'auto'
   },
   game: {
     flexDirection: 'row'
