@@ -9,13 +9,20 @@ import React, {
   Picker,
 } from 'react-native';
 
-OPERATORS = ['*', '/', '+', '-'];
+const NUMLENGTH = 4; // Default amount of numbers in a game
+const OPERATORS = ['*', '/', '+', '-'];
+const OPMAP = {
+  '*': (n1, n2) => n1 * n2,
+  '/': (n1, n2) => n1 / n2,
+  '+': (n1, n2) => n1 + n2,
+  '-': (n1, n2) => n1 - n2
+}
 
-let getRandomInt = function(min, max) {
+const getRandomInt = function(min, max) {
   return Math.floor(Math.random() * (max - min)) + min;
 }
 
-let curry = function(func) {
+const curry = function(func) {
   var parameters = Array.prototype.slice.call(arguments, 1);
   return function() {
     return func.apply(this, parameters.concat(
@@ -24,42 +31,92 @@ let curry = function(func) {
   };
 };
 
+const generateRandArray = function({ size, min, max }) {
+  var res = [];
+  for (var i = 0; i < size; i++) {
+    res.push(getRandomInt(min, max));
+  }
+  return res;
+}
+
 class makeTen extends Component {
-  generateNumbers() {
-    var numbers = [];
-    for (var i = 0; i < this.numLength; i++) {
-      numbers.push(getRandomInt(1, 10));
+  animateTitle() {
+    Animated.timing(this.state.title.opacity, {
+      toValue: 1,
+      duration: 3000
+    }).start();
+    Animated.timing(this.state.number.opacity, {
+      toValue: 1,
+      duration: 5000
+    }).start();
+  }
+
+  componentDidMount() {
+    this.animateTitle();
+  }
+
+  getRandomOperators(n) {
+    return generateRandArray({ size: n, min: 0, max: 4 }).map(
+      (n) => OPERATORS[n]
+    );
+  }
+
+  doOperation({ operators, numbers }, index) {
+    // Avoid mutating inputs
+    numbers   = numbers.slice(0);
+    operators = operators.slice(0);
+
+    var n1 = numbers[index];
+    var n2 = numbers[index + 1];
+    var op = operators.splice(index, 1)[0];
+
+    console.log('op', op, 'n1', n1, 'n2', n2, 'res', OPMAP[op](n1, n2));
+    numbers[index] = OPMAP[op](n1, n2);
+    numbers.splice(index, 1);
+
+    return { numbers, operators };
+  }
+
+  evaluateCombination({ numbers, operators }) {
+    var doOperation = curry(this.doOperation, { operators, numbers });
+
+    if (numbers.length === 1) {
+      // Base case
+      return numbers[0];
+    } else {
+      var index = operators.findIndex((op) => op === '*' || op === '/');
+      return this.evaluateCombination.bind(this)(doOperation(index || 0));
     }
-    return numbers;
+  }
+
+  generateNumbers(n) {
+    return generateRandArray({ size: n, min: 1, max: 10 });
+  }
+
+  generateNewGame(numLength = NUMLENGTH) {
+    var numbers   = this.generateNumbers(numLength);
+    var operators = this.getRandomOperators(numLength - 1);
+    var value     = this.evaluateCombination({ numbers, operators });
+
+    return {
+      title: {
+        opacity: new Animated.Value(0)
+      },
+      number: {
+        value,
+        opacity: new Animated.Value(0)
+      },
+      numbers,
+      operators: ['*', '*', '*']
+    }
   }
 
   constructor(props) {
     super(props);
-    this.numLength = 3;
-    this.state = {
-      title: {
-         fade: new Animated.Value(0)
-      },
-      number: {
-        value: 'Ten',
-        fade: new Animated.Value(0)
-      },
-      numbers: this.generateNumbers(),
-      operators: ['*', '*', '*']
-    };
+    this.state = this.generateNewGame();
   }
 
-  componentDidMount() {
-    Animated.timing(this.state.title.fade, {
-      toValue: 1,
-      duration: 2000
-    }).start();
-    Animated.timing(this.state.number.fade, {
-      toValue: 1,
-      duration: 4000
-    }).start();
-  }
-
+  // Set the current state operator at index i
   setOperator(i, op) {
     var operators = this.state.operators;
     operators[i] = op;
@@ -106,16 +163,18 @@ class makeTen extends Component {
   render() {
     return (
       <View style={styles.container}>
-        <Animated.Text
-          style={[{ opacity: this.state.title.fade }, styles.title]}
-        >
-          Make
-        </Animated.Text>
-        <Animated.Text
-          style={[{ opacity: this.state.number.fade }, styles.title]}
-        >
-          {this.state.number.value}
-        </Animated.Text>
+        <View style={styles.titleContainer}>
+          <Animated.Text
+            style={[{ opacity: this.state.title.opacity }, styles.title]}
+          >
+            Make
+          </Animated.Text>
+          <Animated.Text
+            style={[{ opacity: this.state.number.opacity }, styles.title]}
+          >
+            {this.state.number.value}
+          </Animated.Text>
+        </View>
         <View style={styles.game}>
           {this.renderInputs(this.state)}
         </View>
@@ -131,6 +190,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FCFF',
     alignItems: 'center'
   },
+  titleContainer: {
+    flexDirection: 'row',
+    marginBottom: 100
+  },
   title: {
     fontSize: 30,
     textAlign: 'center',
@@ -139,16 +202,18 @@ const styles = StyleSheet.create({
     alignSelf: 'auto'
   },
   game: {
-    flexDirection: 'row'
+    flexDirection: 'row',
+    marginBottom: 200
   },
   picker: {
     height: 50,
-    width: 50,
-    justifyContent: 'center'
+    width: 25,
+    justifyContent: 'center',
+    margin: 10
   },
   number: {
     height: 50,
-    width: 100,
+    width: 25,
     fontSize: 25,
     textAlign: 'center',
     margin: 10
