@@ -65,14 +65,12 @@ class makeTen extends Component {
     // Avoid mutating inputs
     numbers   = numbers.slice(0);
     operators = operators.slice(0);
+    var n1    = numbers[index];
+    var n2    = numbers[index + 1];
+    var op    = operators.splice(index, 1)[0];
 
-    var n1 = numbers[index];
-    var n2 = numbers[index + 1];
-    var op = operators.splice(index, 1)[0];
-
-    console.log('op', op, 'n1', n1, 'n2', n2, 'res', OPMAP[op](n1, n2));
     numbers[index] = OPMAP[op](n1, n2);
-    numbers.splice(index, 1);
+    numbers.splice(index + 1, 1);
 
     return { numbers, operators };
   }
@@ -84,8 +82,10 @@ class makeTen extends Component {
       // Base case
       return numbers[0];
     } else {
-      var index = operators.findIndex((op) => op === '*' || op === '/');
-      return this.evaluateCombination.bind(this)(doOperation(index || 0));
+      var multOrDiv = operators.findIndex((op) => op === '*' || op === '/');
+      var index = multOrDiv !== -1 ? multOrDiv : 0;
+
+      return this.evaluateCombination.bind(this)(doOperation(index));
     }
   }
 
@@ -98,16 +98,29 @@ class makeTen extends Component {
     var operators = this.getRandomOperators(numLength - 1);
     var value     = this.evaluateCombination({ numbers, operators });
 
-    return {
-      title: {
-        opacity: new Animated.Value(0)
-      },
-      number: {
-        value,
-        opacity: new Animated.Value(0)
-      },
-      numbers,
-      operators: ['*', '*', '*']
+    if (Math.floor(value) !== value) {
+      return this.generateNewGame.bind(this)(numLength);
+    } else {
+      console.info('generateNewGame', operators);
+      return {
+        title: {
+          opacity: new Animated.Value(0)
+        },
+        number: {
+          value,
+          opacity: new Animated.Value(0)
+        },
+        numbers,
+        operators: ['*', '*', '*'],
+        win: {
+          text: {
+            opacity: new Animated.Value(0)
+          },
+          replay: {
+            opacity: new Animated.Value(0)
+          }
+        }
+      }
     }
   }
 
@@ -116,11 +129,26 @@ class makeTen extends Component {
     this.state = this.generateNewGame();
   }
 
+  animateWin() {
+    Animated.timing(this.state.win.text.opacity, {
+      toValue: 1,
+      duration: 1000
+    }).start();
+    Animated.timing(this.state.win.replay.opacity, {
+      toValue: 1,
+      duration: 3000
+    }).start();
+  }
+
   // Set the current state operator at index i
   setOperator(i, op) {
     var operators = this.state.operators;
     operators[i] = op;
+
     this.setState({ operators });
+    if (this.evaluateCombination(this.state) === this.state.number.value) {
+       this.animateWin()
+    }
   }
 
   renderInputs({ numbers, operators }) {
@@ -177,6 +205,18 @@ class makeTen extends Component {
         </View>
         <View style={styles.game}>
           {this.renderInputs(this.state)}
+        </View>
+        <View style={styles.winContainer}>
+          <Animated.Text
+            style={[{ opacity: this.state.win.text.opacity }, styles.win]}
+          >
+            A winner is you!
+          </Animated.Text>
+          <Animated.Text
+            style={[{ opacity: this.state.win.replay.opacity }, styles.win]}
+          >
+            Tap to play again
+          </Animated.Text>
         </View>
       </View>
     );
