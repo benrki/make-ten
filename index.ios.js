@@ -7,6 +7,7 @@ import React, {
   TextInput,
   View,
   Picker,
+  TouchableHighlight,
 } from 'react-native';
 
 const NUMLENGTH = 4; // Default amount of numbers in a game
@@ -97,6 +98,7 @@ class makeTen extends Component {
     var numbers   = this.generateNumbers(numLength);
     var operators = this.getRandomOperators(numLength - 1);
     var value     = this.evaluateCombination({ numbers, operators });
+    var date      = new Date().getTime();
 
     if (Math.floor(value) !== value) {
       return this.generateNewGame.bind(this)(numLength);
@@ -113,10 +115,13 @@ class makeTen extends Component {
         numbers,
         operators: ['*', '*', '*'],
         win: {
+          key: `win-${date}`,
           text: {
+            key: `win-text-${date}`,
             opacity: new Animated.Value(0)
           },
-          replay: {
+          reset: {
+            key: `win-reset-${date}`,
             opacity: new Animated.Value(0)
           }
         }
@@ -134,9 +139,9 @@ class makeTen extends Component {
       toValue: 1,
       duration: 1000
     }).start();
-    Animated.timing(this.state.win.replay.opacity, {
+    Animated.timing(this.state.win.reset.opacity, {
       toValue: 1,
-      duration: 3000
+      duration: 2000
     }).start();
   }
 
@@ -188,7 +193,15 @@ class makeTen extends Component {
     return inputs;
   }
 
+  reset() {
+    this.setState(this.generateNewGame.bind(this)());
+    this.animateTitle();
+  }
+
   render() {
+    // Necessary since React gives our function a parameter we don't want
+    var reset = this.reset.bind(this);
+
     return (
       <View style={styles.container}>
         <View style={styles.titleContainer}>
@@ -208,15 +221,22 @@ class makeTen extends Component {
         </View>
         <View style={styles.winContainer}>
           <Animated.Text
+            key={this.state.win.text.key}
             style={[{ opacity: this.state.win.text.opacity }, styles.win]}
           >
             A winner is you!
           </Animated.Text>
-          <Animated.Text
-            style={[{ opacity: this.state.win.replay.opacity }, styles.win]}
+          <TouchableHighlight
+            key={this.state.win.key}
+            onPress={reset}
           >
-            Tap to play again
-          </Animated.Text>
+            <Animated.Text
+              key={this.state.win.reset.key}
+              style={[{ opacity: this.state.win.reset.opacity }, styles.win]}
+            >
+              Tap to play again
+            </Animated.Text>
+          </TouchableHighlight>
         </View>
       </View>
     );
